@@ -1,0 +1,212 @@
+{
+  "version": "3.0-iterative",
+  "bases": [
+    {
+      "id": "soy",
+      "name_zh": "大豆",
+      "name_en": "Soy",
+      "default_protein_pct": 10.0
+    },
+    {
+      "id": "oat",
+      "name_zh": "燕麦",
+      "name_en": "Oat",
+      "default_protein_pct": 6.0
+    },
+    {
+      "id": "pea",
+      "name_zh": "豌豆",
+      "name_en": "Pea",
+      "default_protein_pct": 9.0
+    },
+    {
+      "id": "almond",
+      "name_zh": "杏仁",
+      "name_en": "Almond",
+      "default_protein_pct": 4.0
+    }
+  ],
+  "targets": {
+    "soft": {
+      "zh": {
+        "syneresis_pct_max": 10,
+        "yield_stress_pa_min": 15,
+        "yield_stress_pa_max": 30
+      },
+      "en": {
+        "syneresis_pct_max": 10,
+        "yield_stress_pa_min": 15,
+        "yield_stress_pa_max": 30
+      }
+    },
+    "thick": {
+      "zh": {
+        "syneresis_pct_max": 6,
+        "yield_stress_pa_min": 30,
+        "yield_stress_pa_max": 60
+      },
+      "en": {
+        "syneresis_pct_max": 6,
+        "yield_stress_pa_min": 30,
+        "yield_stress_pa_max": 60
+      }
+    },
+    "refreshing": {
+      "zh": {
+        "syneresis_pct_max": 12,
+        "yield_stress_pa_min": 8,
+        "yield_stress_pa_max": 18
+      },
+      "en": {
+        "syneresis_pct_max": 12,
+        "yield_stress_pa_min": 8,
+        "yield_stress_pa_max": 18
+      }
+    }
+  },
+  "suppliers": [
+    {
+      "supplier_id": "TBD-SUP",
+      "name": "TBD Supplier",
+      "region": "UK",
+      "contact": "TBD",
+      "MOQ": "TBD",
+      "lead_time": "TBD",
+      "certifications": [],
+      "notes": "Seed placeholder"
+    },
+    {
+      "supplier_id": "KT",
+      "name": "科拓生物 / KeTuo Bio",
+      "region": "CN/UK",
+      "contact": "TBD",
+      "MOQ": "TBD",
+      "lead_time": "TBD",
+      "certifications": [],
+      "notes": "Strain partner"
+    }
+  ],
+  "ingredients": [
+    {
+      "ingredient_id": "ING-SOY-PRO",
+      "category": "protein",
+      "name_zh": "大豆分离蛋白",
+      "name_en": "Soy Protein Isolate",
+      "supplier_id": "TBD-SUP",
+      "specs": {
+        "protein_pct": "TBD"
+      },
+      "clean_label": true,
+      "allergen_flags": [
+        "soy"
+      ],
+      "compatibility_tags": [
+        "soy"
+      ]
+    },
+    {
+      "ingredient_id": "ING-TAP-ST",
+      "category": "stabilizer",
+      "name_zh": "木薯淀粉",
+      "name_en": "Tapioca starch",
+      "supplier_id": "TBD-SUP",
+      "specs": {
+        "type": "TBD"
+      },
+      "clean_label": true,
+      "allergen_flags": [],
+      "compatibility_tags": [
+        "soy",
+        "oat",
+        "pea",
+        "almond"
+      ]
+    },
+    {
+      "ingredient_id": "ING-SWEET",
+      "category": "sweetener",
+      "name_zh": "甜味剂（占位）",
+      "name_en": "Sweetener (TBD)",
+      "supplier_id": "TBD-SUP",
+      "specs": {
+        "blend": "TBD"
+      },
+      "clean_label": true,
+      "allergen_flags": [],
+      "compatibility_tags": [
+        "soy",
+        "oat",
+        "pea",
+        "almond"
+      ]
+    }
+  ],
+  "rheo_methods": [
+    {
+      "rheo_method_id": "NW-Lambda-v1",
+      "name_zh": "NutriWave Λ动员判定 v1",
+      "name_en": "NutriWave Lambda Regime v1",
+      "instrument": "Bohlin CVOR (example)",
+      "geometry": "12-blade vane-in-cup",
+      "protocol": {
+        "temperature_C": 25,
+        "pre_shear": "TBD",
+        "steady_sweep": "TBD",
+        "rest_time_s": "TBD"
+      },
+      "processing_version": "nw_rheo_0.1",
+      "lambda_definition": "tau_crit = tau_y*(r2/r1)^2 ; Lambda = tau1/tau_crit",
+      "regime_rule": "Lambda<1 partial ; Lambda>=1 full",
+      "quality_gates": {
+        "require_full_regime": true,
+        "require_torque_floor_ok": true,
+        "require_repeatability_ok": false
+      },
+      "reported_parameters": [
+        "syneresis_pct",
+        "G_prime_pa",
+        "tau_y_pa",
+        "Lambda",
+        "regime"
+      ]
+    }
+  ],
+  "strains": [
+    {
+      "kind": "strain",
+      "strain_id": "TBD-001",
+      "name_zh": "待补充菌株 (TBD)",
+      "name_en": "Strain TBD",
+      "supplier_id": "KT",
+      "benefit_tags": [],
+      "evidence_level": "seed",
+      "notes_internal": "Fill later"
+    },
+    {
+      "kind": "combo",
+      "strain_combo_id": "COMBO-TBD",
+      "name_zh": "待补充复合菌 (TBD)",
+      "name_en": "Combo TBD",
+      "supplier_id": "KT",
+      "members": [
+        {
+          "id": "TBD-001",
+          "ratio": "TBD"
+        }
+      ],
+      "inoculation_pct": "TBD",
+      "benefit_tags": [
+        "anti_beany",
+        "eps"
+      ],
+      "evidence_level": "seed",
+      "notes_internal": "Fill later"
+    }
+  ],
+  "constraints": {
+    "default": {
+      "clean_label": true,
+      "region": "UK/EU"
+    }
+  }
+}
