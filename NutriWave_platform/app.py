@@ -63,6 +63,68 @@ elif menu.startswith("✨"):
 
     with col2:
         st.markdown("### 🧠 Model status")
+        # -----------------------------
+        # Consumer data upload (optional)
+        # -----------------------------
+        st.markdown("### 📊 消费者数据 / Consumer data (optional)")
+        use_customer = st.toggle("启用消费者数据" if lang=="zh" else "Enable consumer data", value=False)
+
+        customer_profile = None
+
+        if use_customer:
+            up = st.file_uploader(
+                "上传 CSV/Excel（仅用于生成偏好画像）" if lang=="zh" else "Upload CSV/Excel (to build preference profile)",
+                type=["csv", "xlsx"]
+            )
+
+            if up is not None:
+                try:
+                    if up.name.lower().endswith(".csv"):
+                        df = pd.read_csv(up)
+                    else:
+                        df = pd.read_excel(up)
+
+                    st.caption(("已读取 %d 行数据" % len(df)) if lang=="zh" else (f"Loaded {len(df)} rows"))
+
+                    cols = ["(none)"] + list(df.columns)
+
+                    # 你可以按你们数据格式改这些名字，但现在先让用户手动选列最稳
+                    col_overall = st.selectbox(
+                        "总体喜好/购买意愿列" if lang=="zh" else "Overall liking / purchase intent column",
+                        cols, index=0
+                    )
+                    col_sweet = st.selectbox(
+                        "甜味喜好列" if lang=="zh" else "Sweetness liking column",
+                        cols, index=0
+                    )
+                    col_texture = st.selectbox(
+                        "口感/稠度喜好列" if lang=="zh" else "Texture/thickness liking column",
+                        cols, index=0
+                    )
+                    col_beany = st.selectbox(
+                        "豆腥/异味列（越低越讨厌）" if lang=="zh" else "Beany/off-flavor column (lower=worse)",
+                        cols, index=0
+                    )
+
+                    def _mean(col_name: str):
+                        if col_name == "(none)":
+                            return None
+                        s = pd.to_numeric(df[col_name], errors="coerce").dropna()
+                        return float(s.mean()) if len(s) else None
+
+                    customer_profile = {
+                        "rows": int(len(df)),
+                        "overall_mean": _mean(col_overall),
+                        "sweet_mean": _mean(col_sweet),
+                        "texture_mean": _mean(col_texture),
+                        "beany_mean": _mean(col_beany),
+                    }
+
+                    st.success("✅ 已生成偏好画像" if lang=="zh" else "✅ Preference profile created")
+                    st.json(customer_profile)
+
+                except Exception as e:
+                    st.error(("读取失败：%s" % str(e)) if lang=="zh" else (f"Failed to parse file: {e}"))
         model = get_latest_model("surrogate_v1")
         if model and model.get("ok"):
             st.success(f"surrogate_v1 OK (n_used={model.get('n_used')})")
