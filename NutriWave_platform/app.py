@@ -1015,8 +1015,29 @@ else:
             st.success(t("upload_done").format(ok=ok, bad=bad))
             st.cache_data.clear()
 
+        # Active formulation selector (prevents the "no options" issue when you already have formulations)
+        # We keep f2id in session_state as the single source of truth for the builder below.
+        existing_fids = [x.get("formulation_id") for x in forms2 if x.get("formulation_id")]
+        if k("f2id") not in st.session_state:
+            st.session_state[k("f2id")] = existing_fids[0] if existing_fids else f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+
+        active_choice = st.selectbox(
+            t("formulation_id"),
+            options=(existing_fids + ["+ NEW / 新建"]) if existing_fids else ["+ NEW / 新建"],
+            index=(existing_fids.index(st.session_state[k("f2id")]) if st.session_state[k("f2id")] in existing_fids else (len(existing_fids) if existing_fids else 0)),
+            key=k("f2_active_select"),
+        )
+        if active_choice != "+ NEW / 新建":
+            st.session_state[k("f2id")] = active_choice
+
         with st.form(key=k("form2_form")):
-            fid = st.text_input(t("formulation_id"), value=f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}", key=k("f2id"))
+            # If user chooses NEW, prefill a new id; otherwise edit the selected one.
+            _default_new = f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+            fid = st.text_input(
+                t("formulation_id"),
+                value=(_default_new if active_choice == "+ NEW / 新建" else st.session_state[k("f2id")]),
+                key=k("f2id"),
+            )
             # Show associated line IDs under the formulation ID (read-only helper)
             _line_ids_for_fid = [x.get("line_id") for x in lines if x.get("formulation_id") == fid and not x.get("is_deleted")]
             if _line_ids_for_fid:
