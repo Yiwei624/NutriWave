@@ -1074,7 +1074,6 @@ else:
 
         strain_opts = [x.get("strain_product_id") for x in strain_products if x.get("strain_product_id")]
         material_opts = [x.get("material_id") for x in materials if x.get("material_id")]
-
         with st.form(key=k("form_builder")):
             # Row 1: Formulation ID (from header)
             fid = st.session_state.get(k("f2id"), "")
@@ -1083,48 +1082,56 @@ else:
             # Row 2: Lot ID (batch/version)
             lot = st.selectbox(t("lot_id"), lot_ids or [""], key=k("fb_lot"))
 
-            # Row 3: Strain IDs (multi)
-            chosen_strains = st.multiselect(t("strain_ids"), options=strain_opts, default=[], key=k("fb_strains"))
-
-            # Row 4: Material IDs (multi, with amounts in g/L)
-            chosen_materials = st.multiselect(t("material_ids"), options=material_opts, default=[], key=k("fb_materials"))
-
+            # Row 3: Strain table (multi rows, g/L) — dynamic add/delete rows
             st.markdown("#### " + t("strain_lines"))
-            s_df = pd.DataFrame([
-                {"strain_product_id": sid, "amount_value": 0.0, "amount_unit": "g/L", "is_optional": False}
-                for sid in chosen_strains
-            ])
+            default_strain_df = pd.DataFrame([{
+                "strain_product_id": "",
+                "amount_value": 0.0,
+                "amount_unit": "g/L",
+                "is_optional": False,
+            }])
             s_df = st.data_editor(
-                s_df,
+                default_strain_df,
                 use_container_width=True,
-                num_rows="fixed",
+                num_rows="dynamic",
                 hide_index=True,
                 column_config={
-                    "strain_product_id": st.column_config.TextColumn(t("strain_product_id"), disabled=True),
+                    "strain_product_id": st.column_config.SelectboxColumn(
+                        t("strain_product_id"),
+                        options=(strain_opts or [""]),
+                        required=False,
+                    ),
                     "amount_value": st.column_config.NumberColumn(t("amount_value"), min_value=0.0, step=0.1),
                     "amount_unit": st.column_config.TextColumn(t("amount_unit")),
                     "is_optional": st.column_config.CheckboxColumn(t("is_optional")),
                 },
-                key=k("fb_s_df"),
+                key=k("fb_s_df_dyn"),
             )
 
+            # Row 4: Material table (multi rows, g/L) — dynamic add/delete rows
             st.markdown("#### " + t("material_lines"))
-            m_df = pd.DataFrame([
-                {"material_id": mid, "amount_value": 0.0, "amount_unit": "g/L", "is_optional": False}
-                for mid in chosen_materials
-            ])
+            default_material_df = pd.DataFrame([{
+                "material_id": "",
+                "amount_value": 0.0,
+                "amount_unit": "g/L",
+                "is_optional": False,
+            }])
             m_df = st.data_editor(
-                m_df,
+                default_material_df,
                 use_container_width=True,
-                num_rows="fixed",
+                num_rows="dynamic",
                 hide_index=True,
                 column_config={
-                    "material_id": st.column_config.TextColumn(t("material_id"), disabled=True),
+                    "material_id": st.column_config.SelectboxColumn(
+                        t("material_id"),
+                        options=(material_opts or [""]),
+                        required=False,
+                    ),
                     "amount_value": st.column_config.NumberColumn(t("amount_value"), min_value=0.0, step=0.1),
                     "amount_unit": st.column_config.TextColumn(t("amount_unit")),
                     "is_optional": st.column_config.CheckboxColumn(t("is_optional")),
                 },
-                key=k("fb_m_df"),
+                key=k("fb_m_df_dyn"),
             )
 
             if st.form_submit_button(t("save_upsert")):
@@ -1173,6 +1180,8 @@ else:
 
                 st.success(t("refreshed"))
                 st.cache_data.clear()
+
+
 
         del_line = st.selectbox(t("delete_formulation_line"), [x.get("line_id") for x in lines] or [""], key=k("del_line"))
         if st.button(t("delete_selected"), key=k("del_line_btn")):
