@@ -251,14 +251,8 @@ I18N = {
     "upload_rheo_setups": {"zh": "上传流变配置表", "en": "Upload rheology setups"},
 
     # Formulations
-    "formulations_title": {"zh": "配方头（Formulations）", "en": "Formulations"},
-    "formulation_lines_title": {"zh": "配方明细（Lines）", "en": "Formulation Lines"},
+    "formulations_title": {"zh": "配方（Formulations）", "en": "Formulations"},
     "formulation_id": {"zh": "配方ID", "en": "formulation_id"},
-    "basis": {"zh": "基准", "en": "basis"},
-    "line_id": {"zh": "明细ID", "en": "line_id"},
-    "role": {"zh": "角色(role)", "en": "role"},
-    "amount_value": {"zh": "用量(数值)", "en": "amount_value"},
-    "amount_unit": {"zh": "用量单位", "en": "amount_unit"},
     "is_optional": {"zh": "可选项", "en": "is_optional"},
     "delete_formulation2": {"zh": "删除配方头", "en": "Delete formulation"},
     "delete_formulation_line": {"zh": "删除明细行", "en": "Delete line"},
