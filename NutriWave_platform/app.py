@@ -250,18 +250,15 @@ I18N = {
     "delete_rheo_setup": {"zh": "删除流变配置", "en": "Delete rheology setup"},
     "upload_rheo_setups": {"zh": "上传流变配置表", "en": "Upload rheology setups"},
 
-    # Formulations (Merged)
-    "formulations_title": {"zh": "配方（Formulations）", "en": "Formulations"},
-    "formulation_builder_title": {"zh": "配方编辑（Formulations）", "en": "Formulations Builder"},
-    "formulation_builder_help": {
-    "zh": "按顺序填写：配方ID → 批次ID → 菌粉ID（可多选，并在右侧表格填写用量g/L）→ 物料ID（可多选，并在右侧表格填写用量g/L）",
-   "en": "Fill in order: formulation_id → lot_id → Strain IDs (multi, set g/L in the table) → Material IDs (multi, set g/L in the table)"
-},
-"strain_ids": {"zh": "菌粉ID（可多选）", "en": "Strain IDs (multi)"},
-"material_ids": {"zh": "物料ID（可多选）", "en": "Material IDs (multi)"},
-"strain_lines": {"zh": "菌粉用量（g/L）", "en": "Strain dosages (g/L)"},
-"material_lines": {"zh": "物料用量（g/L）", "en": "Material dosages (g/L)"},
-"need_lot_first": {"zh": "请先选择批次ID（lot_id）", "en": "Please select lot_id first"},
+    # Formulations
+    "formulations_title": {"zh": "配方头（Formulations）", "en": "Formulations"},
+    "formulation_lines_title": {"zh": "配方明细（Lines）", "en": "Formulation Lines"},
+    "formulation_id": {"zh": "配方ID", "en": "formulation_id"},
+    "basis": {"zh": "基准", "en": "basis"},
+    "line_id": {"zh": "明细ID", "en": "line_id"},
+    "role": {"zh": "角色(role)", "en": "role"},
+    "amount_value": {"zh": "用量(数值)", "en": "amount_value"},
+    "amount_unit": {"zh": "用量单位", "en": "amount_unit"},
     "is_optional": {"zh": "可选项", "en": "is_optional"},
     "delete_formulation2": {"zh": "删除配方头", "en": "Delete formulation"},
     "delete_formulation_line": {"zh": "删除明细行", "en": "Delete line"},
