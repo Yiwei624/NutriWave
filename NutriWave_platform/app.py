@@ -1192,7 +1192,17 @@ else:
             rid = st.selectbox(t("run_id"), run_ids or [""], key=k("res_rid"))
             overall = st.number_input(t("overall"), 0.0, 10.0, 0.0, 0.1, key=k("res_overall"))
             sy = st.number_input(t("syneresis"), 0.0, 100.0, 0.0, 0.1, key=k("res_sy"))
-            ph = st.number_input(t("pH_end"), 2.0, 8.0, 0.0, 0.01, key=k("res_ph"))
+            # Streamlit raises StreamlitValueBelowMinError if the widget's current
+            # value (including any persisted session_state value) is outside bounds.
+            _ph_key = k("res_ph")
+            if _ph_key in st.session_state:
+                try:
+                    _v = float(st.session_state[_ph_key])
+                except Exception:
+                    _v = None
+                if _v is None or _v < 2.0 or _v > 8.0:
+                    st.session_state[_ph_key] = 4.50
+            ph = st.number_input(t("pH_end"), 2.0, 8.0, 4.50, 0.01, key=_ph_key)
             qc = st.selectbox(t("qc_flag"), ["pass", "suspect", "fail"], 0, key=k("res_qc"))
             if st.form_submit_button(t("save_upsert")):
                 upsert_run_result({
