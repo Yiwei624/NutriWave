@@ -143,6 +143,11 @@ I18N = {
     "no_runs": {"zh": "还没有足够的 runs（至少 8 条含 syneresis + overall + 配方剂量）。", "en": "Not enough usable runs yet (need ≥8 with syneresis+overall+dosages)."},
 }
 
+# ✅ 先选择语言并得到 lang（必须在 t()/k() 前）
+languages = {"中文": "zh", "English": "en"}
+ui_lang_label = st.sidebar.selectbox("🌍 语言 / Language", list(languages.keys()), index=0, key="ui_lang")
+lang = languages[ui_lang_label]
+
 def t(key: str) -> str:
     v = I18N.get(key, {})
     return v.get(lang, key) if isinstance(v, dict) else str(v)
