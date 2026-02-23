@@ -103,6 +103,7 @@ I18N = {
     "delete": {"zh": "删除", "en": "Delete"},
     "list": {"zh": "列表", "en": "List"},
     "add_update": {"zh": "新增 / 更新", "en": "Add / Update"},
+    "need_formulation_first": {"zh": "请先在上方创建/填写一个有效的配方ID（配方头），再添加明细行。", "en": "Please create/enter a valid Formulation ID in the header first, then add line items."},
 
     # Row1 fields
     "combo_id": {"zh": "复合菌ID", "en": "strain_combo_id"},
@@ -264,6 +265,16 @@ I18N = {
     "upload_formulations": {"zh": "上传配方头", "en": "Upload formulations"},
     "upload_formulation_lines": {"zh": "上传配方明细", "en": "Upload formulation lines"},
 
+    # Formulation Builder UI
+    "formulation_builder_title": {"zh": "配方编辑器（4行）", "en": "Formulation Builder (4 rows)"},
+    "formulation_builder_help": {"zh": "按顺序填写：配方ID → 批次ID → 菌粉ID（可多选）→ 物料ID（可多选，并在下方表格填写用量g/L）", "en": "Fill in order: formulation_id → lot_id → strain IDs (multi) → material IDs (multi, set g/L in tables below)"},
+    "strain_ids": {"zh": "菌粉ID（可多选）", "en": "Strain IDs (multi)"},
+    "material_ids": {"zh": "物料ID（可多选）", "en": "Material IDs (multi)"},
+    "strain_lines": {"zh": "菌粉用量（g/L）", "en": "Strain dosages (g/L)"},
+    "material_lines": {"zh": "物料用量（g/L）", "en": "Material dosages (g/L)"},
+    "need_lot_first": {"zh": "请先选择一个批次ID（lot_id）", "en": "Please select a lot_id first"},
+
+
     # Processes / Runs
     "processes_title": {"zh": "工艺参数（Processes）", "en": "Processes"},
     "process_id": {"zh": "工艺ID", "en": "process_id"},
@@ -281,6 +292,7 @@ I18N = {
     "run_id": {"zh": "实验ID", "en": "run_id"},
     "status": {"zh": "状态", "en": "status"},
     "starter_id": {"zh": "菌粉ID", "en": "starter_id"},
+    "rheo_setup_id_in_run": {"zh": "流变配置ID", "en": "rheo_setup_id"},
     "made_at": {"zh": "制备时间", "en": "made_at"},
     "operator": {"zh": "操作者", "en": "operator"},
     "delete_run2": {"zh": "删除实验记录", "en": "Delete run"},
@@ -292,6 +304,23 @@ I18N = {
     "pH_end": {"zh": "终点pH", "en": "pH_end"},
     "delete_result": {"zh": "删除结果", "en": "Delete result"},
     "upload_results": {"zh": "上传结果表", "en": "Upload results"},
+
+    # Results fields (Row5)
+    "result_id": {"zh": "结果ID", "en": "result_id"},
+    "firmness": {"zh": "firmness(质构硬度)", "en": "firmness"},
+    "consistency": {"zh": "consistency(稠度)", "en": "consistency"},
+    "cohesiveness": {"zh": "cohesiveness(内聚性)", "en": "cohesiveness"},
+    "viscosity_index": {"zh": "viscosity_index(粘度指数)", "en": "viscosity_index"},
+    "beany_min": {"zh": "最小感官异味(beany_min)", "en": "beany_min"},
+    "sour_score": {"zh": "酸味(sour)", "en": "sour"},
+    "grainy_or_smooth_score": {"zh": "颗粒-顺滑(grainy_or_smooth)", "en": "grainy_or_smooth"},
+    "TA": {"zh": "酸度(TA)", "en": "TA"},
+    "Gp_1Hz_Pa": {"zh": "Gp@1Hz (Pa)", "en": "Gp_1Hz_Pa"},
+    "tauy_Pa": {"zh": "屈服应力 tauy (Pa)", "en": "tauy_Pa"},
+    "recovery_pct": {"zh": "恢复率(%)", "en": "recovery_pct"},
+    "measured_at": {"zh": "测量时间(measured_at)", "en": "measured_at"},
+    "analyst": {"zh": "分析者(analyst)", "en": "analyst"},
+
 
     # Model runs / predictions
     "model_runs_title": {"zh": "模型训练记录（model_runs）", "en": "Model Runs"},
@@ -536,6 +565,18 @@ else:
             except Exception:
                 n_bad += 1
         return n_ok, n_bad
+
+
+    def _safe_number_input(label, min_value, max_value, value, step, key):
+        """Number input that clamps persisted session_state into [min_value, max_value]."""
+        if key in st.session_state:
+            try:
+                v = float(st.session_state[key])
+            except Exception:
+                v = None
+            if v is None or v < min_value or v > max_value:
+                st.session_state[key] = value
+        return st.number_input(label, min_value, max_value, value, step, key=key)
 
     tabs = st.tabs([
         t("tab_suppliers"),
@@ -974,8 +1015,35 @@ else:
             st.success(t("upload_done").format(ok=ok, bad=bad))
             st.cache_data.clear()
 
+        # Active formulation selector (prevents the "no options" issue when you already have formulations)
+        # We keep f2id in session_state as the single source of truth for the builder below.
+        existing_fids = [x.get("formulation_id") for x in forms2 if x.get("formulation_id")]
+        if k("f2id") not in st.session_state:
+            st.session_state[k("f2id")] = existing_fids[0] if existing_fids else f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+
+        active_choice = st.selectbox(
+            t("formulation_id"),
+            options=(existing_fids + ["+ NEW / 新建"]) if existing_fids else ["+ NEW / 新建"],
+            index=(existing_fids.index(st.session_state[k("f2id")]) if st.session_state[k("f2id")] in existing_fids else (len(existing_fids) if existing_fids else 0)),
+            key=k("f2_active_select"),
+        )
+        if active_choice != "+ NEW / 新建":
+            st.session_state[k("f2id")] = active_choice
+
         with st.form(key=k("form2_form")):
-            fid = st.text_input(t("formulation_id"), value=f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}", key=k("f2id"))
+            # If user chooses NEW, prefill a new id; otherwise edit the selected one.
+            _default_new = f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+            fid = st.text_input(
+                t("formulation_id"),
+                value=(_default_new if active_choice == "+ NEW / 新建" else st.session_state[k("f2id")]),
+                key=k("f2id"),
+            )
+            # Show associated line IDs under the formulation ID (read-only helper)
+            _line_ids_for_fid = [x.get("line_id") for x in lines if x.get("formulation_id") == fid and not x.get("is_deleted")]
+            if _line_ids_for_fid:
+                st.caption(f"{t('line_id')}: {', '.join(_line_ids_for_fid[:20])}{' …' if len(_line_ids_for_fid) > 20 else ''}")
+            else:
+                st.caption(f"{t('line_id')}: (none)")
             basis = st.text_input(t("basis"), value="g_per_L", key=k("f2basis"))
             notes = st.text_area(t("notes"), value="", key=k("f2notes"))
             if st.form_submit_button(t("save_upsert")):
@@ -1011,128 +1079,112 @@ else:
             ok, bad = _bulk_upsert(df, mapping, upsert_formulation_line, "line_id")
             st.success(t("upload_done").format(ok=ok, bad=bad))
             st.cache_data.clear()
-
-        # -----------------------------
-        # Formulation line builder (4 rows)
-        # Row1 formulation_id
-        # Row2 lot_id
-        # Row3 strain IDs (multi) + dosage g/L
-        # Row4 material IDs (multi) + dosage g/L
-        # -----------------------------
-
-        lot_ids = [x.get("lot_id") for x in lots if x.get("lot_id")]
-        form_ids = [x.get("formulation_id") for x in forms2 if x.get("formulation_id")]
+        lot_ids = [x.get("lot_id") for x in lots]
+        form_ids = [x.get("formulation_id") for x in forms2]
         strain_products = admin.get("strain_products", [])
+        # Admin DB stores materials under key "materials2" (admin_materials.jsonl)
         materials = admin.get("materials2", [])
-
-        strain_opts = [x.get("strain_product_id") for x in strain_products if x.get("strain_product_id")]
-        material_opts = [x.get("material_id") for x in materials if x.get("material_id")]
 
         st.markdown("### " + t("formulation_builder_title"))
         st.caption(t("formulation_builder_help"))
 
-        with st.form(key=k("form_builder")):
-            # Row 1: formulation_id
-            fid_choices = (form_ids + ["+ NEW / 新建"]) if form_ids else ["+ NEW / 新建"]
-            fid_pick = st.selectbox(t("formulation_id"), fid_choices, key=k("fb_fid_pick"))
-            if fid_pick == "+ NEW / 新建":
-                fid = st.text_input(t("formulation_id"), value=f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}", key=k("fb_fid_new"))
-            else:
-                fid = fid_pick
+        strain_opts = [x.get("strain_product_id") for x in strain_products if x.get("strain_product_id")]
+        material_opts = [x.get("material_id") for x in materials if x.get("material_id")]
 
-            # Row 2: lot_id
+        with st.form(key=k("form_builder")):
+            # Row 1: Formulation ID (from header)
+            fid = st.session_state.get(k("f2id"), "")
+            st.text_input(t("formulation_id"), value=fid, disabled=True, key=k("fb_fid"))
+
+            # Row 2: Lot ID (batch/version)
             lot = st.selectbox(t("lot_id"), lot_ids or [""], key=k("fb_lot"))
 
-            # Row 3: strain IDs (multi) + dosage
-            c1, c2 = st.columns([2, 3], gap="large")
-            with c1:
-                chosen_strains = st.multiselect(t("strain_ids"), options=strain_opts, default=[], key=k("fb_strains"))
-            with c2:
-                st.markdown("**" + t("strain_lines") + "**")
-                s_df = pd.DataFrame([
-                    {"strain_product_id": sid, "amount_value": 0.0}
-                    for sid in chosen_strains
-                ])
-                s_df = st.data_editor(
-                    s_df,
-                    use_container_width=True,
-                    num_rows="fixed",
-                    hide_index=True,
-                    column_config={
-                        "strain_product_id": st.column_config.TextColumn(t("strain_product_id"), disabled=True),
-                        "amount_value": st.column_config.NumberColumn("g/L", min_value=0.0, step=0.1),
-                    },
-                    key=k("fb_s_df"),
-                )
+            # Row 3: Strain IDs (multi)
+            chosen_strains = st.multiselect(t("strain_ids"), options=strain_opts, default=[], key=k("fb_strains"))
 
-            # Row 4: material IDs (multi) + dosage
-            c3, c4 = st.columns([2, 3], gap="large")
-            with c3:
-                chosen_materials = st.multiselect(t("material_ids"), options=material_opts, default=[], key=k("fb_materials"))
-            with c4:
-                st.markdown("**" + t("material_lines") + "**")
-                m_df = pd.DataFrame([
-                    {"material_id": mid, "amount_value": 0.0}
-                    for mid in chosen_materials
-                ])
-                m_df = st.data_editor(
-                    m_df,
-                    use_container_width=True,
-                    num_rows="fixed",
-                    hide_index=True,
-                    column_config={
-                        "material_id": st.column_config.TextColumn(t("material_id"), disabled=True),
-                        "amount_value": st.column_config.NumberColumn("g/L", min_value=0.0, step=0.1),
-                    },
-                    key=k("fb_m_df"),
-                )
+            # Row 4: Material IDs (multi, with amounts in g/L)
+            chosen_materials = st.multiselect(t("material_ids"), options=material_opts, default=[], key=k("fb_materials"))
+
+            st.markdown("#### " + t("strain_lines"))
+            s_df = pd.DataFrame([
+                {"strain_product_id": sid, "amount_value": 0.0, "amount_unit": "g/L", "is_optional": False}
+                for sid in chosen_strains
+            ])
+            s_df = st.data_editor(
+                s_df,
+                use_container_width=True,
+                num_rows="fixed",
+                hide_index=True,
+                column_config={
+                    "strain_product_id": st.column_config.TextColumn(t("strain_product_id"), disabled=True),
+                    "amount_value": st.column_config.NumberColumn(t("amount_value"), min_value=0.0, step=0.1),
+                    "amount_unit": st.column_config.TextColumn(t("amount_unit")),
+                    "is_optional": st.column_config.CheckboxColumn(t("is_optional")),
+                },
+                key=k("fb_s_df"),
+            )
+
+            st.markdown("#### " + t("material_lines"))
+            m_df = pd.DataFrame([
+                {"material_id": mid, "amount_value": 0.0, "amount_unit": "g/L", "is_optional": False}
+                for mid in chosen_materials
+            ])
+            m_df = st.data_editor(
+                m_df,
+                use_container_width=True,
+                num_rows="fixed",
+                hide_index=True,
+                column_config={
+                    "material_id": st.column_config.TextColumn(t("material_id"), disabled=True),
+                    "amount_value": st.column_config.NumberColumn(t("amount_value"), min_value=0.0, step=0.1),
+                    "amount_unit": st.column_config.TextColumn(t("amount_unit")),
+                    "is_optional": st.column_config.CheckboxColumn(t("is_optional")),
+                },
+                key=k("fb_m_df"),
+            )
 
             if st.form_submit_button(t("save_upsert")):
-                if not fid:
+                if not fid or fid not in form_ids:
                     st.error(t("need_formulation_first"))
                     st.stop()
                 if not lot:
                     st.error(t("need_lot_first"))
                     st.stop()
 
-                # auto-create header if new
-                if fid not in form_ids:
-                    upsert_formulation2({"formulation_id": fid, "basis": "g_per_L", "notes": ""})
-
                 ts = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
 
-                # strains
+                # Write strain lines
                 for _, row in (s_df if isinstance(s_df, pd.DataFrame) else pd.DataFrame()).iterrows():
                     sid = str(row.get('strain_product_id') or '').strip()
                     if not sid:
                         continue
                     line_id = f"L-{ts}-S-{sid}"
                     upsert_formulation_line({
-                        "line_id": line_id,
-                        "formulation_id": fid,
-                        "lot_id": lot,
-                        "role": "strain",
-                        "amount_value": float(row.get('amount_value') or 0.0),
-                        "amount_unit": "g/L",
-                        "is_optional": False,
-                        "strain_product_id": sid,
+                        'line_id': line_id,
+                        'formulation_id': fid,
+                        'lot_id': lot,
+                        'role': 'strain',
+                        'amount_value': float(row.get('amount_value') or 0.0),
+                        'amount_unit': str(row.get('amount_unit') or 'g/L'),
+                        'is_optional': bool(row.get('is_optional') or False),
+                        'strain_product_id': sid,
                     })
 
-                # materials
+                # Write material lines
                 for _, row in (m_df if isinstance(m_df, pd.DataFrame) else pd.DataFrame()).iterrows():
                     mid = str(row.get('material_id') or '').strip()
                     if not mid:
                         continue
                     line_id = f"L-{ts}-M-{mid}"
                     upsert_formulation_line({
-                        "line_id": line_id,
-                        "formulation_id": fid,
-                        "lot_id": lot,
-                        "role": "material",
-                        "amount_value": float(row.get('amount_value') or 0.0),
-                        "amount_unit": "g/L",
-                        "is_optional": False,
-                        "material_id": mid,
+                        'line_id': line_id,
+                        'formulation_id': fid,
+                        'lot_id': lot,
+                        'role': 'material',
+                        'amount_value': float(row.get('amount_value') or 0.0),
+                        'amount_unit': str(row.get('amount_unit') or 'g/L'),
+                        'is_optional': bool(row.get('is_optional') or False),
+                        'material_id': mid,
                     })
 
                 st.success(t("refreshed"))
@@ -1210,11 +1262,12 @@ else:
         if upr is not None:
             df = _read_uploaded_to_df(upr)
             mapping = {
-                "run_id": "run_id", "实验ID": "run_id",
+                "result_id": "result_id", "结果ID": "result_id", "run_id": "run_id", "实验ID": "run_id",
                 "status": "status", "状态": "status",
                 "formulation_id": "formulation_id", "配方ID": "formulation_id",
                 "process_id": "process_id", "工艺ID": "process_id",
                 "starter_id": "starter_id", "菌粉ID": "starter_id",
+                "rheo_setup_id": "rheo_setup_id", "流变配置ID": "rheo_setup_id", "配置ID": "rheo_setup_id",
                 "made_at": "made_at", "制备时间": "made_at",
                 "operator": "operator", "操作者": "operator",
                 "notes": "notes", "备注": "notes",
@@ -1227,12 +1280,14 @@ else:
         form_ids = [x.get("formulation_id") for x in admin.get("formulations2", [])]
         proc_ids = [x.get("process_id") for x in processes]
         starter_ids = [x.get("strain_product_id") for x in admin.get("strain_products", [])]
+        rheo_setup_ids = [x.get("rheo_setup_id") for x in admin.get("rheo_setups", [])]
         with st.form(key=k("run2_form")):
             rid = st.text_input(t("run_id"), value=f"RUN2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}", key=k("run2_id"))
             status = st.selectbox(t("status"), ["planned", "done", "failed"], 0, key=k("run2_status"))
             fid = st.selectbox(t("formulation_id"), form_ids or [""], key=k("run2_fid"))
             pid = st.selectbox(t("process_id"), proc_ids or [""], key=k("run2_pid"))
             sid = st.selectbox(t("starter_id"), starter_ids or [""], key=k("run2_sid"))
+            rsid = st.selectbox(t("rheo_setup_id_in_run"), rheo_setup_ids or [""], key=k("run2_rsid"))
             made_at = st.text_input(t("made_at"), value=datetime.utcnow().isoformat(), key=k("run2_made"))
             op = st.text_input(t("operator"), value="", key=k("run2_op"))
             notes = st.text_area(t("notes"), value="", key=k("run2_notes"))
@@ -1243,6 +1298,7 @@ else:
                     "formulation_id": fid,
                     "process_id": pid,
                     "starter_id": sid,
+                    "rheo_setup_id": rsid,
                     "made_at": made_at,
                     "operator": op,
                     "notes": notes,
@@ -1267,7 +1323,7 @@ else:
         if uprs is not None:
             df = _read_uploaded_to_df(uprs)
             mapping = {
-                "run_id": "run_id", "实验ID": "run_id",
+                "result_id": "result_id", "结果ID": "result_id", "run_id": "run_id", "实验ID": "run_id",
                 "firmness": "firmness", "firmness": "firmness",
                 "consistency": "consistency", "consistency": "consistency",
                 "cohesiveness": "cohesiveness", "cohesiveness": "cohesiveness",
@@ -1292,17 +1348,53 @@ else:
 
         run_ids = [x.get("run_id") for x in admin.get("runs2", [])]
         with st.form(key=k("res_form")):
+            # Result ID (optional metadata; run_id remains PK)
+            result_id = st.text_input(t("result_id"), value=f"RES-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}", key=k("res_result_id"))
             rid = st.selectbox(t("run_id"), run_ids or [""], key=k("res_rid"))
-            overall = st.number_input(t("overall"), 0.0, 10.0, 0.0, 0.1, key=k("res_overall"))
-            sy = st.number_input(t("syneresis"), 0.0, 100.0, 0.0, 0.1, key=k("res_sy"))
-            ph = st.number_input(t("pH_end"), 2.0, 8.0, 0.0, 0.01, key=k("res_ph"))
+
+            colA, colB, colC = st.columns(3)
+            with colA:
+                firmness = _safe_number_input(t("firmness"), 0.0, 1e9, 0.0, 1.0, key=k("res_firm"))
+                consistency = _safe_number_input(t("consistency"), 0.0, 1e9, 0.0, 1.0, key=k("res_cons"))
+                cohesiveness = _safe_number_input(t("cohesiveness"), 0.0, 1e9, 0.0, 0.01, key=k("res_coh"))
+                viscosity_index = _safe_number_input(t("viscosity_index"), 0.0, 1e9, 0.0, 1.0, key=k("res_vi"))
+
+            with colB:
+                beany_min = _safe_number_input(t("beany_min"), 0.0, 5.0, 0.0, 0.1, key=k("res_beany"))
+                sour = _safe_number_input(t("sour_score"), 0.0, 5.0, 0.0, 0.1, key=k("res_sour"))
+                grainy_or_smooth = _safe_number_input(t("grainy_or_smooth_score"), 0.0, 5.0, 0.0, 0.1, key=k("res_grain"))
+                overall = _safe_number_input(t("overall"), 1.0, 5.0, 4.0, 0.1, key=k("res_overall"))
+
+            with colC:
+                sy = _safe_number_input(t("syneresis"), 0.0, 100.0, 0.0, 0.1, key=k("res_sy"))
+                TA = _safe_number_input(t("TA"), 0.0, 200.0, 0.0, 0.1, key=k("res_ta"))
+                ph = _safe_number_input(t("pH_end"), 2.0, 8.0, 4.50, 0.01, key=k("res_ph"))
+                Gp = _safe_number_input(t("Gp_1Hz_Pa"), 0.0, 1e9, 0.0, 1.0, key=k("res_gp"))
+                tauy = _safe_number_input(t("tauy_Pa"), 0.0, 1e9, 0.0, 1.0, key=k("res_tauy"))
+                recovery = _safe_number_input(t("recovery_pct"), 0.0, 200.0, 0.0, 0.1, key=k("res_rec"))
+
+            analyst = st.text_input(t("analyst"), value="", key=k("res_analyst"))
             qc = st.selectbox(t("qc_flag"), ["pass", "suspect", "fail"], 0, key=k("res_qc"))
+
             if st.form_submit_button(t("save_upsert")):
                 upsert_run_result({
                     "run_id": rid,
+                    "result_id": result_id,
+                    "firmness": float(firmness),
+                    "consistency": float(consistency),
+                    "cohesiveness": float(cohesiveness),
+                    "viscosity_index": float(viscosity_index),
+                    "beany_min": float(beany_min),
+                    "sour": float(sour),
+                    "grainy_or_smooth": float(grainy_or_smooth),
                     "overall": float(overall),
                     "syneresis_pct": float(sy),
+                    "TA": float(TA),
                     "pH_end": float(ph),
+                    "Gp_1Hz_Pa": float(Gp),
+                    "tauy_Pa": float(tauy),
+                    "recovery_pct": float(recovery),
+                    "analyst": analyst,
                     "qc_flag": qc,
                     "measured_at": datetime.utcnow().isoformat(),
                 })
@@ -1387,7 +1479,7 @@ else:
                 mapping = {
                     "prediction_id": "prediction_id", "预测ID": "prediction_id",
                     "model_run_id": "model_run_id", "模型训练ID": "model_run_id",
-                    "run_id": "run_id", "实验ID": "run_id",
+                    "result_id": "result_id", "结果ID": "result_id", "run_id": "run_id", "实验ID": "run_id",
                     "y_pred": "y_pred", "预测": "y_pred",
                     "y_true": "y_true", "真实": "y_true",
                     "created_at": "created_at", "创建时间": "created_at",
