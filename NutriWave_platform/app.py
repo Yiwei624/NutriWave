@@ -986,6 +986,15 @@ else:
         lines = admin.get("formulation_lines", [])
         lots = admin.get("material_lots", [])
 
+
+        # Active formulation (used when adding lines)
+        form_ids = [x.get("formulation_id") for x in forms2]
+        active_fid_label = "当前配方ID（用于明细录入）" if lang == "zh" else "Active formulation_id (for lines)"
+        active_fid = st.selectbox(active_fid_label, form_ids or [""], key=k("active_fid")) if form_ids else ""
+        if active_fid:
+            _line_ids = [x.get("line_id") for x in lines if x.get("formulation_id") == active_fid]
+            if _line_ids:
+                st.caption(("该配方的明细ID: " if lang == "zh" else "Line IDs for this formulation: ") + ", ".join(_line_ids))
         st.subheader(t("formulations_title"))
         df_forms = pd.DataFrame(forms2)
         if not df_forms.empty:
@@ -1006,10 +1015,19 @@ else:
 
         with st.form(key=k("form2_form")):
             fid = st.text_input(t("formulation_id"), value=f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}", key=k("f2id"))
+            # Show line_ids under formulation_id (read-only)
+            assoc_line_ids = [x.get("line_id") for x in lines if x.get("formulation_id") == fid]
+            st.multiselect(t("line_id"), assoc_line_ids, default=assoc_line_ids, disabled=True, key=k("f2_line_ids_view"))
+            # Show line_ids under formulation_id (read-only)
+            assoc_line_ids = [x.get("line_id") for x in lines if x.get("formulation_id") == fid]
+            st.multiselect(t("line_id"), assoc_line_ids, default=assoc_line_ids, disabled=True, key=k("f2_line_ids_view"))
             basis = st.text_input(t("basis"), value="g_per_L", key=k("f2basis"))
             notes = st.text_area(t("notes"), value="", key=k("f2notes"))
-            if st.form_submit_button(t("save_upsert")):
-                upsert_formulation2({"formulation_id": fid, "basis": basis, "notes": notes})
+            submitted = st.form_submit_button(t("save_upsert"))
+            if submitted and not active_fid:
+                st.error("请先选择当前配方ID" if lang == "zh" else "Please select an active formulation_id first")
+            if submitted and active_fid:
+                upsert_formulation2({"formulation_id": active_fid, "basis": basis, "notes": notes})
                 st.success(t("refreshed"))
                 st.cache_data.clear()
 
@@ -1024,7 +1042,7 @@ else:
         st.subheader(t("formulation_lines_title"))
         df_lines = pd.DataFrame(lines)
         if not df_lines.empty:
-            st.dataframe(df_lines, use_container_width=True)
+            st.dataframe(df_lines.drop(columns=["formulation_id"], errors="ignore"), use_container_width=True)
 
         upln = st.file_uploader(t("upload_formulation_lines"), type=["csv", "xlsx", "xls", "json", "jsonl"], key=k("up_lines"))
         if upln is not None:
@@ -1046,7 +1064,6 @@ else:
         form_ids = [x.get("formulation_id") for x in forms2]
         with st.form(key=k("line_form")):
             line_id = st.text_input(t("line_id"), value=f"L-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}", key=k("line_id"))
-            fid = st.selectbox(t("formulation_id"), form_ids or [""], key=k("line_fid"))
             lot = st.selectbox(t("lot_id"), lot_ids or [""], key=k("line_lot"))
             role = st.selectbox(t("role"), ["strain", "protein", "sweetener", "stabilizer", "water", "other"], 0, key=k("line_role"))
             amt = st.number_input(t("amount_value"), 0.0, 2000.0, 0.0, 0.1, key=k("line_amt"))
