@@ -1082,7 +1082,8 @@ else:
         lot_ids = [x.get("lot_id") for x in lots]
         form_ids = [x.get("formulation_id") for x in forms2]
         strain_products = admin.get("strain_products", [])
-        materials = admin.get("materials", [])
+        # Admin DB stores materials under key "materials2" (admin_materials.jsonl)
+        materials = admin.get("materials2", [])
 
         st.markdown("### " + t("formulation_builder_title"))
         st.caption(t("formulation_builder_help"))
