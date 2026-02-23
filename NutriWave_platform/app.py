@@ -293,6 +293,22 @@ I18N = {
     "delete_result": {"zh": "删除结果", "en": "Delete result"},
     "upload_results": {"zh": "上传结果表", "en": "Upload results"},
 
+    # Results fields (Row5)
+    "result_id": {"zh": "结果ID", "en": "result_id"},
+    "firmness": {"zh": "firmness(质构硬度)", "en": "firmness"},
+    "consistency": {"zh": "consistency(稠度)", "en": "consistency"},
+    "cohesiveness": {"zh": "cohesiveness(内聚性)", "en": "cohesiveness"},
+    "viscosity_index": {"zh": "viscosity_index(粘度指数)", "en": "viscosity_index"},
+    "beany_min": {"zh": "最小感官异味(beany_min)", "en": "beany_min"},
+    "sour_score": {"zh": "酸味(sour)", "en": "sour"},
+    "grainy_or_smooth_score": {"zh": "颗粒-顺滑(grainy_or_smooth)", "en": "grainy_or_smooth"},
+    "TA": {"zh": "酸度(TA)", "en": "TA"},
+    "Gp_1Hz_Pa": {"zh": "Gp@1Hz (Pa)", "en": "Gp_1Hz_Pa"},
+    "tauy_Pa": {"zh": "屈服应力 tauy (Pa)", "en": "tauy_Pa"},
+    "recovery_pct": {"zh": "恢复率(%)", "en": "recovery_pct"},
+    "measured_at": {"zh": "测量时间(measured_at)", "en": "measured_at"},
+    "analyst": {"zh": "分析者(analyst)", "en": "analyst"},
+
     # Model runs / predictions
     "model_runs_title": {"zh": "模型训练记录（model_runs）", "en": "Model Runs"},
     "model_predictions_title": {"zh": "模型预测记录（model_predictions）", "en": "Model Predictions"},
