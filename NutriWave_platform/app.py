@@ -977,218 +977,142 @@ else:
 
     # -------- Formulations (header + lines) --------
     with tabs[5]:
-        forms2 = admin.get("formulations2", [])
-        lines = admin.get("formulation_lines", [])
-        lots = admin.get("material_lots", [])
+# Minimal Formulations UI: keep only the 4-row builder.
+# (1) formulation_id editable
+# (2) lot_id select
+# (3) strain_product_id multi via dynamic table + g/L
+# (4) material_id multi via dynamic table + g/L
 
-        st.subheader(t("formulations_title"))
-        df_forms = pd.DataFrame(forms2)
-        if not df_forms.empty:
-            st.dataframe(df_forms, use_container_width=True)
+forms2 = admin.get("formulations2", [])
+lots = admin.get("material_lots", [])
+strain_products = admin.get("strain_products", [])
+materials = admin.get("materials2", [])
 
-        # Upload formulations
-        upf = st.file_uploader(t("upload_formulations"), type=["csv", "xlsx", "xls", "json", "jsonl"], key=k("up_forms2"))
-        if upf is not None:
-            df = _read_uploaded_to_df(upf)
-            mapping = {
-                "formulation_id": "formulation_id", "配方ID": "formulation_id",
-                "basis": "basis", "基准": "basis",
-                "notes": "notes", "备注": "notes",
-            }
-            ok, bad = _bulk_upsert(df, mapping, upsert_formulation2, "formulation_id", auto_defaults={"basis": "g_per_L"})
-            st.success(t("upload_done").format(ok=ok, bad=bad))
-            st.cache_data.clear()
+form_ids = [x.get("formulation_id") for x in forms2 if x.get("formulation_id")]
+lot_ids = [x.get("lot_id") for x in lots if x.get("lot_id")]
+strain_opts = [x.get("strain_product_id") for x in strain_products if x.get("strain_product_id")]
+material_opts = [x.get("material_id") for x in materials if x.get("material_id")]
 
-        # Active formulation selector (prevents the "no options" issue when you already have formulations)
-        # We keep f2id in session_state as the single source of truth for the builder below.
-        existing_fids = [x.get("formulation_id") for x in forms2 if x.get("formulation_id")]
-        if k("f2id") not in st.session_state:
-            st.session_state[k("f2id")] = existing_fids[0] if existing_fids else f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+st.subheader(t("formulations_title"))
+st.markdown("### " + t("formulation_builder_title"))
+st.caption(t("formulation_builder_help"))
 
-        active_choice = st.selectbox(
-            t("formulation_id"),
-            options=(existing_fids + ["+ NEW / 新建"]) if existing_fids else ["+ NEW / 新建"],
-            index=(existing_fids.index(st.session_state[k("f2id")]) if st.session_state[k("f2id")] in existing_fids else (len(existing_fids) if existing_fids else 0)),
-            key=k("f2_active_select"),
-        )
-        if active_choice != "+ NEW / 新建":
-            st.session_state[k("f2id")] = active_choice
+with st.form(key=k("form_builder")):
+    # Row 1: formulation_id (editable)
+    fid = st.text_input(
+        t("formulation_id"),
+        value=st.session_state.get(k("f2id"), f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"),
+        key=k("f2id"),
+    )
 
-        with st.form(key=k("form2_form")):
-            # If user chooses NEW, prefill a new id; otherwise edit the selected one.
-            _default_new = f"F2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
-            fid = st.text_input(
-                t("formulation_id"),
-                value=(_default_new if active_choice == "+ NEW / 新建" else st.session_state[k("f2id")]),
-                key=k("f2id"),
-            )
-            # Show associated line IDs under the formulation ID (read-only helper)
-            _line_ids_for_fid = [x.get("line_id") for x in lines if x.get("formulation_id") == fid and not x.get("is_deleted")]
-            if _line_ids_for_fid:
-                st.caption(f"{t('line_id')}: {', '.join(_line_ids_for_fid[:20])}{' …' if len(_line_ids_for_fid) > 20 else ''}")
-            else:
-                st.caption(f"{t('line_id')}: (none)")
-            basis = st.text_input(t("basis"), value="g_per_L", key=k("f2basis"))
-            notes = st.text_area(t("notes"), value="", key=k("f2notes"))
-            if st.form_submit_button(t("save_upsert")):
-                upsert_formulation2({"formulation_id": fid, "basis": basis, "notes": notes})
-                st.success(t("refreshed"))
-                st.cache_data.clear()
+    # Row 2: lot_id
+    lot = st.selectbox(t("lot_id"), lot_ids or [""], key=k("fb_lot"))
 
-        del_fid = st.selectbox(t("delete_formulation2"), [x.get("formulation_id") for x in forms2] or [""], key=k("del_f2"))
-        if st.button(t("delete_selected"), key=k("del_f2_btn")):
-            if del_fid:
-                delete_formulation2(del_fid)
-                st.success(t("refreshed"))
-                st.cache_data.clear()
+    # Row 3: strain table
+    st.markdown("#### " + t("strain_lines"))
+    default_strain_df = pd.DataFrame([{
+        "strain_product_id": "",
+        "amount_value": 0.0,
+        "amount_unit": "g/L",
+        "is_optional": False,
+    }])
+    s_df = st.data_editor(
+        default_strain_df,
+        use_container_width=True,
+        num_rows="dynamic",
+        hide_index=True,
+        column_config={
+            "strain_product_id": st.column_config.SelectboxColumn(
+                t("strain_product_id"),
+                options=(strain_opts or [""]),
+                required=False,
+            ),
+            "amount_value": st.column_config.NumberColumn(t("amount_value"), min_value=0.0, step=0.1),
+            "amount_unit": st.column_config.TextColumn(t("amount_unit")),
+            "is_optional": st.column_config.CheckboxColumn(t("is_optional")),
+        },
+        key=k("fb_s_df_dyn"),
+    )
 
-        st.markdown("---")
-        st.subheader(t("formulation_lines_title"))
-        df_lines = pd.DataFrame(lines)
-        if not df_lines.empty:
-            st.dataframe(df_lines, use_container_width=True)
+    # Row 4: material table
+    st.markdown("#### " + t("material_lines"))
+    default_material_df = pd.DataFrame([{
+        "material_id": "",
+        "amount_value": 0.0,
+        "amount_unit": "g/L",
+        "is_optional": False,
+    }])
+    m_df = st.data_editor(
+        default_material_df,
+        use_container_width=True,
+        num_rows="dynamic",
+        hide_index=True,
+        column_config={
+            "material_id": st.column_config.SelectboxColumn(
+                t("material_id"),
+                options=(material_opts or [""]),
+                required=False,
+            ),
+            "amount_value": st.column_config.NumberColumn(t("amount_value"), min_value=0.0, step=0.1),
+            "amount_unit": st.column_config.TextColumn(t("amount_unit")),
+            "is_optional": st.column_config.CheckboxColumn(t("is_optional")),
+        },
+        key=k("fb_m_df_dyn"),
+    )
 
-        upln = st.file_uploader(t("upload_formulation_lines"), type=["csv", "xlsx", "xls", "json", "jsonl"], key=k("up_lines"))
-        if upln is not None:
-            df = _read_uploaded_to_df(upln)
-            mapping = {
-                "line_id": "line_id", "明细ID": "line_id",
-                "formulation_id": "formulation_id", "配方ID": "formulation_id",
-                "lot_id": "lot_id", "批次ID": "lot_id",
-                "role": "role", "角色": "role",
-                "amount_value": "amount_value", "用量": "amount_value",
-                "amount_unit": "amount_unit", "单位": "amount_unit",
-                "is_optional": "is_optional", "可选": "is_optional",
-            }
-            ok, bad = _bulk_upsert(df, mapping, upsert_formulation_line, "line_id")
-            st.success(t("upload_done").format(ok=ok, bad=bad))
-            st.cache_data.clear()
-        lot_ids = [x.get("lot_id") for x in lots]
-        form_ids = [x.get("formulation_id") for x in forms2]
-        strain_products = admin.get("strain_products", [])
-        # Admin DB stores materials under key "materials2" (admin_materials.jsonl)
-        materials = admin.get("materials2", [])
+    if st.form_submit_button(t("save_upsert")):
+        fid = (fid or "").strip()
+        if not fid:
+            st.error(t("need_formulation_first"))
+            st.stop()
+        if not lot:
+            st.error(t("need_lot_first"))
+            st.stop()
 
-        st.markdown("### " + t("formulation_builder_title"))
-        st.caption(t("formulation_builder_help"))
+        # If formulation header doesn't exist yet, create it automatically.
+        if fid not in form_ids:
+            upsert_formulation2({"formulation_id": fid, "basis": "g_per_L", "notes": ""})
 
-        strain_opts = [x.get("strain_product_id") for x in strain_products if x.get("strain_product_id")]
-        material_opts = [x.get("material_id") for x in materials if x.get("material_id")]
-        with st.form(key=k("form_builder")):
-            # Row 1: Formulation ID (from header)
-            fid = st.session_state.get(k("f2id"), "")
-            st.text_input(t("formulation_id"), value=fid, disabled=True, key=k("fb_fid"))
+        ts = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
 
-            # Row 2: Lot ID (batch/version)
-            lot = st.selectbox(t("lot_id"), lot_ids or [""], key=k("fb_lot"))
+        # Write strain lines
+        for _, row in (s_df if isinstance(s_df, pd.DataFrame) else pd.DataFrame()).iterrows():
+            sid = str(row.get('strain_product_id') or '').strip()
+            if not sid:
+                continue
+            line_id = f"L-{ts}-S-{sid}"
+            upsert_formulation_line({
+                'line_id': line_id,
+                'formulation_id': fid,
+                'lot_id': lot,
+                'role': 'strain',
+                'amount_value': float(row.get('amount_value') or 0.0),
+                'amount_unit': str(row.get('amount_unit') or 'g/L'),
+                'is_optional': bool(row.get('is_optional') or False),
+                'strain_product_id': sid,
+            })
 
-            # Row 3: Strain table (multi rows, g/L) — dynamic add/delete rows
-            st.markdown("#### " + t("strain_lines"))
-            default_strain_df = pd.DataFrame([{
-                "strain_product_id": "",
-                "amount_value": 0.0,
-                "amount_unit": "g/L",
-                "is_optional": False,
-            }])
-            s_df = st.data_editor(
-                default_strain_df,
-                use_container_width=True,
-                num_rows="dynamic",
-                hide_index=True,
-                column_config={
-                    "strain_product_id": st.column_config.SelectboxColumn(
-                        t("strain_product_id"),
-                        options=(strain_opts or [""]),
-                        required=False,
-                    ),
-                    "amount_value": st.column_config.NumberColumn(t("amount_value"), min_value=0.0, step=0.1),
-                    "amount_unit": st.column_config.TextColumn(t("amount_unit")),
-                    "is_optional": st.column_config.CheckboxColumn(t("is_optional")),
-                },
-                key=k("fb_s_df_dyn"),
-            )
+        # Write material lines
+        for _, row in (m_df if isinstance(m_df, pd.DataFrame) else pd.DataFrame()).iterrows():
+            mid = str(row.get('material_id') or '').strip()
+            if not mid:
+                continue
+            line_id = f"L-{ts}-M-{mid}"
+            upsert_formulation_line({
+                'line_id': line_id,
+                'formulation_id': fid,
+                'lot_id': lot,
+                'role': 'material',
+                'amount_value': float(row.get('amount_value') or 0.0),
+                'amount_unit': str(row.get('amount_unit') or 'g/L'),
+                'is_optional': bool(row.get('is_optional') or False),
+                'material_id': mid,
+            })
 
-            # Row 4: Material table (multi rows, g/L) — dynamic add/delete rows
-            st.markdown("#### " + t("material_lines"))
-            default_material_df = pd.DataFrame([{
-                "material_id": "",
-                "amount_value": 0.0,
-                "amount_unit": "g/L",
-                "is_optional": False,
-            }])
-            m_df = st.data_editor(
-                default_material_df,
-                use_container_width=True,
-                num_rows="dynamic",
-                hide_index=True,
-                column_config={
-                    "material_id": st.column_config.SelectboxColumn(
-                        t("material_id"),
-                        options=(material_opts or [""]),
-                        required=False,
-                    ),
-                    "amount_value": st.column_config.NumberColumn(t("amount_value"), min_value=0.0, step=0.1),
-                    "amount_unit": st.column_config.TextColumn(t("amount_unit")),
-                    "is_optional": st.column_config.CheckboxColumn(t("is_optional")),
-                },
-                key=k("fb_m_df_dyn"),
-            )
-
-            if st.form_submit_button(t("save_upsert")):
-                if not fid or fid not in form_ids:
-                    st.error(t("need_formulation_first"))
-                    st.stop()
-                if not lot:
-                    st.error(t("need_lot_first"))
-                    st.stop()
-
-                ts = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
-
-                # Write strain lines
-                for _, row in (s_df if isinstance(s_df, pd.DataFrame) else pd.DataFrame()).iterrows():
-                    sid = str(row.get('strain_product_id') or '').strip()
-                    if not sid:
-                        continue
-                    line_id = f"L-{ts}-S-{sid}"
-                    upsert_formulation_line({
-                        'line_id': line_id,
-                        'formulation_id': fid,
-                        'lot_id': lot,
-                        'role': 'strain',
-                        'amount_value': float(row.get('amount_value') or 0.0),
-                        'amount_unit': str(row.get('amount_unit') or 'g/L'),
-                        'is_optional': bool(row.get('is_optional') or False),
-                        'strain_product_id': sid,
-                    })
-
-                # Write material lines
-                for _, row in (m_df if isinstance(m_df, pd.DataFrame) else pd.DataFrame()).iterrows():
-                    mid = str(row.get('material_id') or '').strip()
-                    if not mid:
-                        continue
-                    line_id = f"L-{ts}-M-{mid}"
-                    upsert_formulation_line({
-                        'line_id': line_id,
-                        'formulation_id': fid,
-                        'lot_id': lot,
-                        'role': 'material',
-                        'amount_value': float(row.get('amount_value') or 0.0),
-                        'amount_unit': str(row.get('amount_unit') or 'g/L'),
-                        'is_optional': bool(row.get('is_optional') or False),
-                        'material_id': mid,
-                    })
-
-                st.success(t("refreshed"))
-                st.cache_data.clear()
+        st.success(t("refreshed"))
+        st.cache_data.clear()
 
 
-
-        del_line = st.selectbox(t("delete_formulation_line"), [x.get("line_id") for x in lines] or [""], key=k("del_line"))
-        if st.button(t("delete_selected"), key=k("del_line_btn")):
-            if del_line:
-                delete_formulation_line(del_line)
-                st.success(t("refreshed"))
-                st.cache_data.clear()
 
     # -------- Runs (processes + runs) --------
     with tabs[6]:
