@@ -155,12 +155,12 @@ def k(name: str) -> str:
 
 # Clear language-bound widget state on switch
 if "prev_lang" not in st.session_state:
-    st.session_state.prev_lang = lang
-elif st.session_state.prev_lang != lang:
+    st.session_state["prev_lang"] = lang
+elif st.session_state["prev_lang"] != lang:
     for kk in list(st.session_state.keys()):
         if kk.endswith("_zh") or kk.endswith("_en"):
             del st.session_state[kk]
-    st.session_state.prev_lang = lang
+    st.session_state["prev_lang"] = lang
 
 @st.cache_data
 def _load():
