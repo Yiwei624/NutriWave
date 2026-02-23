@@ -281,6 +281,7 @@ I18N = {
     "run_id": {"zh": "实验ID", "en": "run_id"},
     "status": {"zh": "状态", "en": "status"},
     "starter_id": {"zh": "菌粉ID", "en": "starter_id"},
+    "rheo_setup_id_in_run": {"zh": "流变配置ID", "en": "rheo_setup_id"},
     "made_at": {"zh": "制备时间", "en": "made_at"},
     "operator": {"zh": "操作者", "en": "operator"},
     "delete_run2": {"zh": "删除实验记录", "en": "Delete run"},
@@ -1112,6 +1113,7 @@ else:
                 "formulation_id": "formulation_id", "配方ID": "formulation_id",
                 "process_id": "process_id", "工艺ID": "process_id",
                 "starter_id": "starter_id", "菌粉ID": "starter_id",
+                "rheo_setup_id": "rheo_setup_id", "流变配置ID": "rheo_setup_id", "配置ID": "rheo_setup_id",
                 "made_at": "made_at", "制备时间": "made_at",
                 "operator": "operator", "操作者": "operator",
                 "notes": "notes", "备注": "notes",
@@ -1124,12 +1126,14 @@ else:
         form_ids = [x.get("formulation_id") for x in admin.get("formulations2", [])]
         proc_ids = [x.get("process_id") for x in processes]
         starter_ids = [x.get("strain_product_id") for x in admin.get("strain_products", [])]
+        rheo_setup_ids = [x.get("rheo_setup_id") for x in admin.get("rheo_setups", [])]
         with st.form(key=k("run2_form")):
             rid = st.text_input(t("run_id"), value=f"RUN2-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}", key=k("run2_id"))
             status = st.selectbox(t("status"), ["planned", "done", "failed"], 0, key=k("run2_status"))
             fid = st.selectbox(t("formulation_id"), form_ids or [""], key=k("run2_fid"))
             pid = st.selectbox(t("process_id"), proc_ids or [""], key=k("run2_pid"))
             sid = st.selectbox(t("starter_id"), starter_ids or [""], key=k("run2_sid"))
+            rsid = st.selectbox(t("rheo_setup_id_in_run"), rheo_setup_ids or [""], key=k("run2_rsid"))
             made_at = st.text_input(t("made_at"), value=datetime.utcnow().isoformat(), key=k("run2_made"))
             op = st.text_input(t("operator"), value="", key=k("run2_op"))
             notes = st.text_area(t("notes"), value="", key=k("run2_notes"))
@@ -1140,6 +1144,7 @@ else:
                     "formulation_id": fid,
                     "process_id": pid,
                     "starter_id": sid,
+                    "rheo_setup_id": rsid,
                     "made_at": made_at,
                     "operator": op,
                     "notes": notes,
