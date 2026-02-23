@@ -294,6 +294,23 @@ I18N = {
     "delete_result": {"zh": "删除结果", "en": "Delete result"},
     "upload_results": {"zh": "上传结果表", "en": "Upload results"},
 
+    # Results fields (Row5)
+    "result_id": {"zh": "结果ID", "en": "result_id"},
+    "firmness": {"zh": "firmness(质构硬度)", "en": "firmness"},
+    "consistency": {"zh": "consistency(稠度)", "en": "consistency"},
+    "cohesiveness": {"zh": "cohesiveness(内聚性)", "en": "cohesiveness"},
+    "viscosity_index": {"zh": "viscosity_index(粘度指数)", "en": "viscosity_index"},
+    "beany_min": {"zh": "最小感官异味(beany_min)", "en": "beany_min"},
+    "sour_score": {"zh": "酸味(sour)", "en": "sour"},
+    "grainy_or_smooth_score": {"zh": "颗粒-顺滑(grainy_or_smooth)", "en": "grainy_or_smooth"},
+    "TA": {"zh": "酸度(TA)", "en": "TA"},
+    "Gp_1Hz_Pa": {"zh": "Gp@1Hz (Pa)", "en": "Gp_1Hz_Pa"},
+    "tauy_Pa": {"zh": "屈服应力 tauy (Pa)", "en": "tauy_Pa"},
+    "recovery_pct": {"zh": "恢复率(%)", "en": "recovery_pct"},
+    "measured_at": {"zh": "测量时间(measured_at)", "en": "measured_at"},
+    "analyst": {"zh": "分析者(analyst)", "en": "analyst"},
+
+
     # Model runs / predictions
     "model_runs_title": {"zh": "模型训练记录（model_runs）", "en": "Model Runs"},
     "model_predictions_title": {"zh": "模型预测记录（model_predictions）", "en": "Model Predictions"},
@@ -537,6 +554,18 @@ else:
             except Exception:
                 n_bad += 1
         return n_ok, n_bad
+
+
+    def _safe_number_input(label, min_value, max_value, value, step, key):
+        """Number input that clamps persisted session_state into [min_value, max_value]."""
+        if key in st.session_state:
+            try:
+                v = float(st.session_state[key])
+            except Exception:
+                v = None
+            if v is None or v < min_value or v > max_value:
+                st.session_state[key] = value
+        return st.number_input(label, min_value, max_value, value, step, key=key)
 
     tabs = st.tabs([
         t("tab_suppliers"),
@@ -1108,7 +1137,7 @@ else:
         if upr is not None:
             df = _read_uploaded_to_df(upr)
             mapping = {
-                "run_id": "run_id", "实验ID": "run_id",
+                "result_id": "result_id", "结果ID": "result_id", "run_id": "run_id", "实验ID": "run_id",
                 "status": "status", "状态": "status",
                 "formulation_id": "formulation_id", "配方ID": "formulation_id",
                 "process_id": "process_id", "工艺ID": "process_id",
@@ -1169,7 +1198,7 @@ else:
         if uprs is not None:
             df = _read_uploaded_to_df(uprs)
             mapping = {
-                "run_id": "run_id", "实验ID": "run_id",
+                "result_id": "result_id", "结果ID": "result_id", "run_id": "run_id", "实验ID": "run_id",
                 "firmness": "firmness", "firmness": "firmness",
                 "consistency": "consistency", "consistency": "consistency",
                 "cohesiveness": "cohesiveness", "cohesiveness": "cohesiveness",
@@ -1194,27 +1223,53 @@ else:
 
         run_ids = [x.get("run_id") for x in admin.get("runs2", [])]
         with st.form(key=k("res_form")):
+            # Result ID (optional metadata; run_id remains PK)
+            result_id = st.text_input(t("result_id"), value=f"RES-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}", key=k("res_result_id"))
             rid = st.selectbox(t("run_id"), run_ids or [""], key=k("res_rid"))
-            overall = st.number_input(t("overall"), 0.0, 10.0, 0.0, 0.1, key=k("res_overall"))
-            sy = st.number_input(t("syneresis"), 0.0, 100.0, 0.0, 0.1, key=k("res_sy"))
-            # Streamlit raises StreamlitValueBelowMinError if the widget's current
-            # value (including any persisted session_state value) is outside bounds.
-            _ph_key = k("res_ph")
-            if _ph_key in st.session_state:
-                try:
-                    _v = float(st.session_state[_ph_key])
-                except Exception:
-                    _v = None
-                if _v is None or _v < 2.0 or _v > 8.0:
-                    st.session_state[_ph_key] = 4.50
-            ph = st.number_input(t("pH_end"), 2.0, 8.0, 4.50, 0.01, key=_ph_key)
+
+            colA, colB, colC = st.columns(3)
+            with colA:
+                firmness = _safe_number_input(t("firmness"), 0.0, 1e9, 0.0, 1.0, key=k("res_firm"))
+                consistency = _safe_number_input(t("consistency"), 0.0, 1e9, 0.0, 1.0, key=k("res_cons"))
+                cohesiveness = _safe_number_input(t("cohesiveness"), 0.0, 1e9, 0.0, 0.01, key=k("res_coh"))
+                viscosity_index = _safe_number_input(t("viscosity_index"), 0.0, 1e9, 0.0, 1.0, key=k("res_vi"))
+
+            with colB:
+                beany_min = _safe_number_input(t("beany_min"), 0.0, 5.0, 0.0, 0.1, key=k("res_beany"))
+                sour = _safe_number_input(t("sour_score"), 0.0, 5.0, 0.0, 0.1, key=k("res_sour"))
+                grainy_or_smooth = _safe_number_input(t("grainy_or_smooth_score"), 0.0, 5.0, 0.0, 0.1, key=k("res_grain"))
+                overall = _safe_number_input(t("overall"), 1.0, 5.0, 4.0, 0.1, key=k("res_overall"))
+
+            with colC:
+                sy = _safe_number_input(t("syneresis"), 0.0, 100.0, 0.0, 0.1, key=k("res_sy"))
+                TA = _safe_number_input(t("TA"), 0.0, 200.0, 0.0, 0.1, key=k("res_ta"))
+                ph = _safe_number_input(t("pH_end"), 2.0, 8.0, 4.50, 0.01, key=k("res_ph"))
+                Gp = _safe_number_input(t("Gp_1Hz_Pa"), 0.0, 1e9, 0.0, 1.0, key=k("res_gp"))
+                tauy = _safe_number_input(t("tauy_Pa"), 0.0, 1e9, 0.0, 1.0, key=k("res_tauy"))
+                recovery = _safe_number_input(t("recovery_pct"), 0.0, 200.0, 0.0, 0.1, key=k("res_rec"))
+
+            analyst = st.text_input(t("analyst"), value="", key=k("res_analyst"))
             qc = st.selectbox(t("qc_flag"), ["pass", "suspect", "fail"], 0, key=k("res_qc"))
+
             if st.form_submit_button(t("save_upsert")):
                 upsert_run_result({
                     "run_id": rid,
+                    "result_id": result_id,
+                    "firmness": float(firmness),
+                    "consistency": float(consistency),
+                    "cohesiveness": float(cohesiveness),
+                    "viscosity_index": float(viscosity_index),
+                    "beany_min": float(beany_min),
+                    "sour": float(sour),
+                    "grainy_or_smooth": float(grainy_or_smooth),
                     "overall": float(overall),
                     "syneresis_pct": float(sy),
+                    "TA": float(TA),
                     "pH_end": float(ph),
+                    "Gp_1Hz_Pa": float(Gp),
+                    "tauy_Pa": float(tauy),
+                    "recovery_pct": float(recovery),
+                    "analyst": analyst,
                     "qc_flag": qc,
                     "measured_at": datetime.utcnow().isoformat(),
                 })
@@ -1299,7 +1354,7 @@ else:
                 mapping = {
                     "prediction_id": "prediction_id", "预测ID": "prediction_id",
                     "model_run_id": "model_run_id", "模型训练ID": "model_run_id",
-                    "run_id": "run_id", "实验ID": "run_id",
+                    "result_id": "result_id", "结果ID": "result_id", "run_id": "run_id", "实验ID": "run_id",
                     "y_pred": "y_pred", "预测": "y_pred",
                     "y_true": "y_true", "真实": "y_true",
                     "created_at": "created_at", "创建时间": "created_at",
